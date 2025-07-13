@@ -4,161 +4,111 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Organizador de Descripciones Excel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
   <style>
     body {
-      font-family: 'Roboto', sans-serif;
-      background: linear-gradient(to bottom right, #dfe9f3, #ffffff);
-      color: #333;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #eef2f3, #c9d6ff);
       margin: 0;
       padding: 2rem;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
     }
 
     h1 {
       text-align: center;
-      color: #222;
+      color: #333;
       margin-bottom: 1rem;
     }
 
-    p.description {
-      max-width: 700px;
+    .description {
       text-align: center;
+      max-width: 700px;
       margin-bottom: 2rem;
-      font-size: 1.1rem;
-      line-height: 1.6;
+      color: #444;
     }
 
     input[type="file"], button {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1rem;
       margin: 0.5rem;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
     }
 
     input[type="file"] {
-      background-color: #ffffff;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
     button {
-      background-color: #0066ff;
+      background-color: #007bff;
       color: white;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      box-shadow: 0 4px 8px rgba(0, 102, 255, 0.3);
+      transition: background 0.3s ease;
     }
 
     button:hover {
-      background-color: #004fc1;
-      transform: scale(1.03);
+      background-color: #0056b3;
     }
 
-    .status {
+    #status {
       margin-top: 1rem;
       font-weight: bold;
-      color: #007bff;
-      opacity: 0;
-      transition: opacity 0.4s ease-in-out;
+      color: green;
     }
 
-    .status.visible {
-      opacity: 1;
-    }
-
-    .button-group {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    #printTable {
+    table {
       margin-top: 2rem;
       border-collapse: collapse;
       width: 100%;
-      max-width: 900px;
+      max-width: 1000px;
       display: none;
-      background: white;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
 
-    #printTable th, #printTable td {
-      border: 1px solid #ccc;
-      padding: 10px;
+    th, td {
+      border: 1px solid #999;
+      padding: 8px;
       text-align: left;
     }
 
-    #printTable th {
-      background-color: #f2f2f2;
+    th {
+      background: #f1f1f1;
     }
 
     @media (max-width: 600px) {
-      p.description {
-        font-size: 1rem;
-        padding: 0 1rem;
-      }
-
-      input[type="file"], button {
+      input, button {
         width: 90%;
-        margin: 0.3rem auto;
-      }
-
-      .button-group {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      #printTable {
-        font-size: 0.85rem;
       }
     }
   </style>
 </head>
 <body>
   <h1>Organizador de Descripciones Excel</h1>
-  <p class="description">
-    Esta herramienta reorganiza automáticamente la columna <strong>descripción</strong> de tu archivo Excel.
-    Mueve solo el <strong>bloque anterior</strong> al que inicia con <code>Q</code> (como Q24M1) al inicio del texto. 
-    Acepta nombres de columna como "Descripción", "descripcion", "DESCRIPCIÓN", etc.
-    <br>
-    Subí tu archivo, hacé clic en "Convertir" y luego descargá o imprimí los resultados.
-  </p>
-
-  <input type="file" id="excelFile" accept=".xlsx" />
-  <div class="button-group">
-    <button onclick="convertExcel()">Convertir</button>
-    <button onclick="downloadExcel()" id="downloadBtn" disabled>Descargar Excel</button>
-    <button onclick="printTable()" id="printBtn" disabled>Imprimir Tabla</button>
+  <div class="description">
+    Esta herramienta reorganiza automáticamente la columna <strong>descripción</strong> (sin importar mayúsculas ni tildes) de tu archivo Excel.
+    Mueve el <strong>bloque anterior</strong> al que empieza con <code>Q</code> al comienzo del texto.
   </div>
 
-  <div class="status" id="statusMsg">Procesando archivo...</div>
-  <table id="printTable"></table>
+  <input type="file" id="excelInput" accept=".xlsx" />
+  <div>
+    <button onclick="convertExcel()">Convertir</button>
+    <button onclick="downloadExcel()" id="downloadBtn" disabled>Descargar</button>
+    <button onclick="printTable()" id="printBtn" disabled>Imprimir</button>
+  </div>
 
-  <script type="module">
-    import ExcelJS from 'https://cdn.jsdelivr.net/npm/exceljs/+esm';
+  <div id="status"></div>
+  <table id="previewTable"></table>
 
-    const fileInput = document.getElementById("excelFile");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const printBtn = document.getElementById("printBtn");
-    const table = document.getElementById("printTable");
-    const statusMsg = document.getElementById("statusMsg");
+  <script>
+    let modifiedData = [];
+    let headers = [];
 
-    let processedWorkbook = null;
-    let processedData = null;
-
-    function showStatus(message) {
-      statusMsg.textContent = message;
-      statusMsg.classList.add("visible");
-      setTimeout(() => statusMsg.classList.remove("visible"), 3000);
-    }
-
-    function normalizarTexto(str) {
-      return str.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+    function normalizeHeader(str) {
+      return str.normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
     }
 
     function moverBloqueAntesDeQ(texto) {
@@ -171,99 +121,119 @@
       return [bloqueAntes, ...nuevosBloques].join(" ");
     }
 
-    window.convertExcel = async function () {
-      const file = fileInput.files[0];
-      if (!file) return alert("Subí un archivo primero.");
-
-      showStatus("Procesando archivo...");
-
-      const buffer = await file.arrayBuffer();
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
-      const worksheet = workbook.worksheets[0];
-
-      const headerRow = worksheet.getRow(1);
-      let descripcionColIndex = -1;
-
-      headerRow.eachCell((cell, colNumber) => {
-        const texto = normalizarTexto(String(cell.text || ""));
-        if (texto.includes("descripcion")) {
-          descripcionColIndex = colNumber;
-        }
-      });
-
-      if (descripcionColIndex === -1) {
-        alert("No se encontró una columna de descripción.");
+    async function convertExcel() {
+      const input = document.getElementById("excelInput");
+      if (!input.files[0]) {
+        alert("Subí un archivo primero.");
         return;
       }
 
-      const data = [];
-      worksheet.eachRow((row, rowIndex) => {
-        if (rowIndex === 1) return;
-        const cell = row.getCell(descripcionColIndex);
-        const textoOriginal = String(cell.value || "");
-        const textoModificado = moverBloqueAntesDeQ(textoOriginal);
-        cell.value = textoModificado;
-        data.push({ index: rowIndex, texto: textoModificado });
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await input.files[0].arrayBuffer());
+
+      const sheet = workbook.worksheets[0];
+      const headerRow = sheet.getRow(1);
+      const columnMap = {};
+      headerRow.eachCell((cell, colNumber) => {
+        const headerText = normalizeHeader(cell.text);
+        columnMap[headerText] = colNumber;
       });
 
-      processedWorkbook = workbook;
-      processedData = data;
+      const descripcionKey = Object.keys(columnMap).find(k => k.includes("descripcion"));
+      if (!descripcionKey) {
+        alert("No se encontró la columna 'descripcion'");
+        return;
+      }
 
-      table.innerHTML = `
-        <thead><tr><th>Fila</th><th>Descripción modificada</th></tr></thead>
-        <tbody>
-          ${data.map(d => `<tr><td>${d.index}</td><td>${d.texto}</td></tr>`).join("")}
-        </tbody>
-      `;
+      const colIndex = columnMap[descripcionKey];
+      modifiedData = [];
+      headers = [];
+
+      sheet.eachRow((row, rowIndex) => {
+        const rowObj = {};
+        row.eachCell((cell, colIdx) => {
+          const header = headerRow.getCell(colIdx).text;
+          const value = cell.text;
+          if (rowIndex === 1) headers.push(header);
+          rowObj[header] = (colIdx === colIndex && rowIndex !== 1)
+            ? moverBloqueAntesDeQ(value)
+            : value;
+        });
+        if (rowIndex !== 1) modifiedData.push(rowObj);
+      });
+
+      showPreview();
+      document.getElementById("downloadBtn").disabled = false;
+      document.getElementById("printBtn").disabled = false;
+      document.getElementById("status").textContent = "Archivo procesado correctamente ✅";
+    }
+
+    function showPreview() {
+      const table = document.getElementById("previewTable");
       table.style.display = "table";
+      table.innerHTML = "";
 
-      downloadBtn.disabled = false;
-      printBtn.disabled = false;
-      showStatus("Archivo convertido ✅");
-    };
+      const thead = document.createElement("thead");
+      thead.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr>`;
+      table.appendChild(thead);
 
-    window.downloadExcel = async function () {
-      if (!processedWorkbook) return;
-      const blob = await processedWorkbook.xlsx.writeBuffer();
-      const url = URL.createObjectURL(new Blob([blob]));
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "archivo_modificado.xlsx";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-    };
+      const tbody = document.createElement("tbody");
+      modifiedData.forEach(row => {
+        const tr = document.createElement("tr");
+        headers.forEach(h => {
+          const td = document.createElement("td");
+          td.textContent = row[h] || "";
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+    }
 
-    window.printTable = function () {
-      if (!processedData) return;
-      const tableHtml = `
+    function downloadExcel() {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Hoja 1");
+
+      ws.addRow(headers);
+      modifiedData.forEach(row => {
+        const values = headers.map(h => row[h] || "");
+        ws.addRow(values);
+      });
+
+      wb.xlsx.writeBuffer().then(buffer => {
+        const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "archivo_modificado.xlsx";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    function printTable() {
+      const tableHtml = document.getElementById("previewTable").outerHTML;
+      const win = window.open("", "", "width=800,height=600");
+      win.document.write(`
         <html>
           <head>
-            <title>Imprimir</title>
+            <title>Vista previa</title>
             <style>
-              body { font-family: Roboto, sans-serif; padding: 2rem; }
+              body { font-family: Arial, sans-serif; padding: 20px; }
               table { border-collapse: collapse; width: 100%; }
-              th, td { border: 1px solid #999; padding: 8px; text-align: left; }
+              th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
               th { background-color: #eee; }
             </style>
           </head>
           <body>
-            <h2>Archivo Modificado</h2>
-            <table>
-              <thead><tr><th>Fila</th><th>Descripción modificada</th></tr></thead>
-              <tbody>
-                ${processedData.map(d => `<tr><td>${d.index}</td><td>${d.texto}</td></tr>`).join("")}
-              </tbody>
-            </table>
+            <h2>Archivo Procesado</h2>
+            ${tableHtml}
           </body>
         </html>
-      `;
-      const win = window.open();
-      win.document.write(tableHtml);
+      `);
       win.document.close();
       win.print();
-    };
+    }
   </script>
 </body>
 </html>
