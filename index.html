@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Organizador de Descripciones Excel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
   <style>
     body {
       font-family: 'Roboto', sans-serif;
@@ -25,9 +25,9 @@
       color: #222;
     }
 
-    p.description {
-      max-width: 700px;
+    .description {
       text-align: center;
+      max-width: 700px;
       margin-bottom: 2rem;
       font-size: 1.1rem;
     }
@@ -38,33 +38,32 @@
       border-radius: 8px;
       font-size: 1rem;
       margin: 0.5rem;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
     }
 
     input[type="file"] {
-      background-color: #ffffff;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
     button {
-      background-color: #0066ff;
+      background-color: #007bff;
       color: white;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      box-shadow: 0 4px 8px rgba(0, 102, 255, 0.3);
+      transition: background 0.3s ease;
     }
 
     button:hover {
-      background-color: #004fc1;
-      transform: scale(1.03);
+      background-color: #0056b3;
     }
 
-    .status {
+    #status {
       margin-top: 1rem;
       font-weight: bold;
-      color: #007bff;
-      opacity: 0;
-      transition: opacity 0.4s ease-in-out;
+      color: green;
     }
 
     .status.visible {
@@ -95,12 +94,7 @@
     }
 
     @media (max-width: 600px) {
-      p.description {
-        font-size: 1rem;
-        padding: 0 1rem;
-      }
-
-      input[type="file"], button {
+      input, button {
         width: 90%;
         margin: 0.3rem auto;
       }
@@ -126,8 +120,12 @@
     <button onclick="printTable()">Imprimir</button>
   </div>
 
-  <div class="status" id="statusMsg">Procesando archivo...</div>
-  <table id="printTable"></table>
+  <input type="file" id="excelInput" accept=".xlsx" />
+  <div>
+    <button onclick="convertExcel()">Convertir</button>
+    <button onclick="downloadExcel()" id="downloadBtn" disabled>Descargar</button>
+    <button onclick="printTable()" id="printBtn" disabled>Imprimir</button>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
