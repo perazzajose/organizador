@@ -164,10 +164,7 @@
 
       const worksheet = workbook.worksheets[0];
       const header = worksheet.getRow(1).values;
-     const descCol = header.findIndex(h => {
-  const text = h?.toString().toLowerCase();
-  return text === 'descripcion' || text === 'descripción';
-});
+    const descCol = header.findIndex(h => h?.toString().toUpperCase() === 'DESCRIPCIÓN');
 
       if (descCol === -1) return alert("No se encontró la columna 'descripcion'.");
 
